@@ -1,28 +1,19 @@
 from fastapi import APIRouter,Depends,HTTPException,status
-from .auth import get_current_user
 from validation_models.project import ProjectValidation,UpdateProjectValidation
 from db.connection import connect_to_db
 from uuid import UUID
 from fastapi.responses import JSONResponse
+from utils.check_access import check_access
+from utils.current_user import get_current_user
+from .task import router as task_router
 
 router=APIRouter(
-    prefix='/project'
+    prefix='/project',
 )
 
-def check_access(cur:any,idx:UUID,user:dict):
-    cur.execute('''
-        SELECT owner FROM project
-        WHERE project_id=%s
-    ''',(str(idx),)
-    )
-    data=cur.fetchone()
-    if data is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail='Project with that id does not exist.')
-    if data['owner']!=user['username']:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="You do not have access to this resource.")
-    return True
+router.include_router(task_router,prefix='/{idx}/tasks',tags=['Manage Tasks'])
 
-@router.post('',status_code=status.HTTP_201_CREATED)
+@router.post('',status_code=status.HTTP_201_CREATED,tags=['Manage Projects'])
 def create_project(data:ProjectValidation,user:dict=Depends(get_current_user),connection=Depends(connect_to_db)):
     with connection.cursor() as cur:
         cur.execute('''
@@ -40,7 +31,7 @@ def create_project(data:ProjectValidation,user:dict=Depends(get_current_user),co
             'user': user.get('username')
         }
         
-@router.get('',status_code=status.HTTP_200_OK)
+@router.get('',status_code=status.HTTP_200_OK,tags=['Manage Projects'])
 def get_project(user:dict=Depends(get_current_user),connection=Depends(connect_to_db)):
     with connection.cursor() as cur:
         cur.execute('''
@@ -54,7 +45,7 @@ def get_project(user:dict=Depends(get_current_user),connection=Depends(connect_t
             'data':data
         }
         
-@router.get('/{idx}')
+@router.get('/{idx}',tags=['Manage Projects'])
 def project_details(idx:UUID,user:dict=Depends(get_current_user),connection=Depends(connect_to_db)):
     with connection.cursor() as cur:
         try:
@@ -80,7 +71,7 @@ def project_details(idx:UUID,user:dict=Depends(get_current_user),connection=Depe
             'details': result
         }
         
-@router.patch('/{idx}')
+@router.patch('/{idx}',tags=['Manage Projects'])
 def update_project(idx:UUID,data:UpdateProjectValidation,user=Depends(get_current_user),connection=Depends(connect_to_db)):
     with connection.cursor() as cur:
         try:
@@ -106,7 +97,7 @@ def update_project(idx:UUID,data:UpdateProjectValidation,user=Depends(get_curren
             }
         }
         
-@router.delete('/{idx}',status_code=status.HTTP_204_NO_CONTENT)
+@router.delete('/{idx}',status_code=status.HTTP_204_NO_CONTENT,tags=['Manage Projects'])
 def delete_project(idx:UUID,user=Depends(get_current_user),connection=Depends(connect_to_db)):
     with connection.cursor() as cur:
         try:
@@ -120,5 +111,5 @@ def delete_project(idx:UUID,user=Depends(get_current_user),connection=Depends(co
         ''',(str(idx),)            
         )
         deleted_project=cur.fetchone()
-        if delete_project is None:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail='Unable to Delete Project!')        
+        if deleted_project is None:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail='Unable to Delete Project!')                   

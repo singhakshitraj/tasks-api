@@ -1,45 +1,15 @@
 from fastapi import APIRouter,Depends,HTTPException,status
-from validation_models.login import AuthValidation
-import jwt
-from datetime import datetime,timedelta
-import os
-from passlib.context import CryptContext
+from fastapi.security import OAuth2PasswordRequestForm
 from db.connection import connect_to_db
-from fastapi.security import OAuth2PasswordBearer
-from dotenv import load_dotenv
-
+from utils.password import hash_password,verify_password
+from utils.current_user import create_access_token
 router=APIRouter(
     prefix='/auth',
     tags=['Authentication']
 )
-context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_bearer = OAuth2PasswordBearer(tokenUrl="token")
-
-def hash_password(password: str):
-    return context.hash(password)
-
-def verify_password(plain_password,hashed_password):
-    return context.verify(plain_password,hashed_password)
-
-def create_access_token(data:dict):
-    data.update({'expires':str(datetime.now()+timedelta(minutes=90))})
-    return jwt.encode(
-        data,
-        key=os.environ.get('SECRET_KEY'),
-        algorithm="HS256",
-    )
-
-def get_current_user(token=Depends(oauth2_bearer)):
-    load_dotenv()
-    data=jwt.decode(token,key=os.environ.get('SECRET_KEY'),algorithms=[os.environ.get('ALGORITHM')])
-    if data is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail='Incorrect Token!')
-    elif  data['expires']<=str(datetime.now()):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail='Token Expired!')
-    return {"username": data['username']}
 
 @router.post('/register')
-def _register(user:AuthValidation,connection=Depends(connect_to_db)):
+def _register(user:OAuth2PasswordRequestForm=Depends(),connection=Depends(connect_to_db)):
     with connection.cursor() as cur:
         cur.execute('''
             SELECT * FROM USERS
@@ -66,7 +36,7 @@ def _register(user:AuthValidation,connection=Depends(connect_to_db)):
         }
         
 @router.post('/login')
-def _login(user:AuthValidation,connection=Depends(connect_to_db)):
+def _login(user:OAuth2PasswordRequestForm=Depends(),connection=Depends(connect_to_db)):
     with connection.cursor() as cur:
         cur.execute('''
             SELECT * FROM USERS
