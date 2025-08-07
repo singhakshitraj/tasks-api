@@ -5,7 +5,7 @@ from uuid import UUID
 from utils.check_access import check_access
 from utils.current_user import get_current_user
 from validation_models.task import CreateTaskValidation,UpdateTaskValidation
-
+from utils.send_email import send_email_task
 router=APIRouter()
 
 @router.post('/',status_code=status.HTTP_201_CREATED)
@@ -29,6 +29,7 @@ def create_task(data:CreateTaskValidation,idx:UUID=Path(...),user=Depends(get_cu
         new_task=cur.fetchone()
         if new_task is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail='Task not Created!')
+        send_email_task.delay(str(email),"Task Assigned",'''A new task with name %s has been assigned to you.'''%(new_task['name'],))
         return {
             'messgae':'Task Added',
             'task':{
@@ -85,12 +86,19 @@ def update_task_details(task_id:UUID,data:UpdateTaskValidation,user=Depends(get_
             description=COALESCE(%s,description),
             assigned_to=COALESCE(%s,assigned_to)
             WHERE task_id=%s
-            returning task_id
+            returning name,task_id,assigned_to
         ''',(data.name,data.isdone,data.priority,data.due_date,data.description,data.assigned_to,str(task_id))
         )
         updated_task=cur.fetchone()
         if updated_task is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail='Unable to update')
+        cur.execute('''
+            SELECT email FROM users
+            WHERE username=%s
+        ''',(updated_task['assigned_to'],)
+        )
+        email=cur.fetchone()['email']
+        send_email_task.delay(str(email),"Task Assigned",'''A task with name \"%s\" has been updated and assigned to you.'''%(updated_task['name'],))        
         return {
             'message':"Updated Successfull!",
             'task-id':updated_task
