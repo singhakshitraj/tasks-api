@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from celery_worker import celery_ap
 import asyncio
 
+load_dotenv()
 configs = ConnectionConfig(
     MAIL_USERNAME= os.environ.get('MAIL_USERNAME'),
     MAIL_PASSWORD= os.environ.get('MAIL_PASSWORD'),
