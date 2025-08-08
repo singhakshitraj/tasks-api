@@ -9,7 +9,7 @@ CREATE TABLE TASKS (
     due_date DATE NOT NULL,
     description VARCHAR,
     assigned_to VARCHAR,
-    CONSTRAINT fk_project FOREIGN KEY (project_id) REFERENCES PROJECT (project_id),
+    CONSTRAINT fk_project FOREIGN KEY (project_id) REFERENCES PROJECT (project_id) ON DELETE CASCADE,
     CONSTRAINT fk_assigned_to FOREIGN KEY (assigned_to) REFERENCES users (username)
 );
 
