@@ -83,6 +83,8 @@ celery -A celery_worker.celery_ap -Q emails
   For getting information about the celery during devmode.
 
 ---
+## Database Design
+<img width="1303" height="807" alt="Screenshot 2025-08-07 201936" src="https://github.com/user-attachments/assets/58e4e6d8-da02-40e9-a8de-64130bd8943a" />
 
 ## Code Structure
 
