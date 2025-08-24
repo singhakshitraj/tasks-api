@@ -72,7 +72,7 @@ VALIDATE_CERTS=__TRUE_OR_FALSE__
 #### 1. DEV MODE
 ```bash
 uvicorn main:app --reload
-celery -A celery_worker.celery_ap -Q emails
+celery -A celery_worker.celery_ap worker -Q emails
 ```
 
 - `-Q emails`  
